@@ -1,0 +1,5 @@
+{
+    "env":{
+        "mongo_alt_pw" : "node-api"
+    }
+}
