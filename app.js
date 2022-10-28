@@ -10,9 +10,8 @@ const mongoose = require('mongoose');
 
 const productRoute = require('./api/routes/product');
 
-mongoose.connect("mongodb+srv://node-api:node-api@node-api.5shxmmm.mongodb.net/?retryWrites=true&w=majority",(err) => {
-    if(err) throw err;
-    console.log('connected to MongoDB')
+mongoose.connect('mongodb://127.0.0.1:27017/product_db').then(()=>{
+    console.log("Server Connect");
 });
 
 
