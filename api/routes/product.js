@@ -66,4 +66,22 @@ router.delete('/:productId',function(req,res,next){
     });
 });
 
+router.patch('/:productId',function(req,res,next) {
+   const pid = req.params.productId;
+   Product.updateOne({ _id: pid},{$set:{name : req.body.name,price:req.body.price}}).
+   exec().
+   then(result => {
+    res.status(200).json({
+        'statusCode' : 200,
+        'message' : 'successfully update product',
+    });
+   }).
+   catch(err =>{
+    res.status(400).json({
+        'statusCode' : 400,
+        'error' : err,
+    });
+   });
+});
+
 module.exports = router;
