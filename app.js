@@ -10,6 +10,8 @@ const mongoose = require('mongoose');
 
 const productRoute = require('./api/routes/product');
 
+const userRoute = require('./api/routes/user');
+
 mongoose.connect('mongodb://127.0.0.1:27017/product_db').then(()=>{
     console.log("Server Connect");
 });
@@ -20,6 +22,8 @@ app.use(bodyparser.urlencoded({extended: false}));
 app.use(bodyparser.json());
 
 app.use('/product', productRoute);
+
+app.use('/user', userRoute);
 
 app.use(function(req, res, next){
     const error = new Error('Error occured');
