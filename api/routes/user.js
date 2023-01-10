@@ -6,22 +6,16 @@ const mongoose = require('mongoose');
 
 const User = require('../models/users');
 
-router.post('/sendotp',function(req,res,next){
+router.post('/sendotp', async function(req,res,next) {
     const phoneNumber = req.body.phoneNumber;
-    User.find({phone : phoneNumber}).exec().
-    then(doc =>{
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        if(doc.length < 1){
-         saveUserAndSendOtp(phoneNumber,otp).then(result=>{
-            console.log(result);
-         res.status(200).json(result);
-         });
-        }
-        let result = updateAndSendOtp(phoneNumber,otp);
-        res.status(200).json(result);
-    }).catch(err=>{
-        console.log(err);
-    })
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const user = await User.find({phone : phoneNumber}).exec();
+   if(user.length < 1){
+    const data = await saveUserAndSendOtp(phoneNumber,otp);
+    res.status(data.code).send(data);
+   }
+   const data = await updateAndSendOtp(phoneNumber,otp);
+    res.status(data.code).send(data);
 });
 
 async function saveUserAndSendOtp(phone,otp){
@@ -31,66 +25,44 @@ async function saveUserAndSendOtp(phone,otp){
         phone : phone,
         otp : otp,
     });
-    user.save().then(result =>{
-        return {'code' : 200};
-    }).catch(err =>{
-        return {'code' : 200};
-    });
+   var result = await user.save();
+   if(result._id != null){
+    return {'code' : 200,
+             'otp' : otp,
+             'message' : 'Otp send successful'
+           };
+   }
+   return {'code' : 500,'message' : 'Server Error'};
 }
-
-function updateAndSendOtp(phone,otp){
+async function updateAndSendOtp(phone,otp){
     const query = { phone: phone};
     var newvalues = {$set: {otp: otp} };
-    User.updateOne(query,newvalues,function(err,res){
-        if(err) {
-            var result = {
-                'code': 400,
-                'message' : "not found"
-            };
-            return result;
-        }
-        var success = {
-            'code': 200,
-            'message' : "success"
-        };
-        return success;
-    });
+  const result =  await User.updateOne(query,newvalues);
+  if(result.acknowledged){
+    return {
+        'code' : 200,
+        'otp' : otp,
+        'message' : 'Otp send successful'
+    };
+  }
+  return {'code' : 500,'message' : 'Server Error'};
 }
 
-router.post('/verifyotp',function(req,res,next){
+router.post('/verifyotp', async function(req,res,next){
     const phoneNumber = req.body.phoneNumber;
     const otp = req.body.otp;
-    User.findOne({phone : phoneNumber}).exec().
-    then(doc =>{
-       if(doc.otp == otp && doc.phone == phoneNumber){
+    const user = User.findOne({phone : phoneNumber}).exec();
+    if(user.otp == otp && user.phone == phoneNumber){
         return res.status(200).json({
             'code': 200,
             'message' : 'Otp verify successfull',
             'token' : 'hjegrew3473bvch7rt37tr'
         });
-       }
-       return res.status(400).json({
+    }
+    return res.status(401).json({
         'code': 400,
         'message' : 'Otp does`t match',
     }); 
-
-    }).catch(err=>{
-        console.log(err);
-    })
 });
-
-
-router.get('/test',function(req,res,next){
-getData(5).then(rs=>{
-    res.status(200).json(rs);
-});
-});
-
-async function getData(a){
-    if(a==5){
-        return {'code' : 200,'message' : "cool"};
-    }
-    return {'code' : 400};
-}
 
 module.exports = router;
