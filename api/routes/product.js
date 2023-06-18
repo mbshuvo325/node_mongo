@@ -7,81 +7,90 @@ const mongoose = require('mongoose');
 
 const Product = require('../models/product');
 
-router.get('/',function(req,res,next) {
-    Product.find().exec().
-    then(doc=>{
+router.get('/',async function(req,res,next) {
+    try{
+        var products = await Product.find();
         res.status(200).json({
-            'products':doc,
+            'statusCode' : 200,
+            'message' : 'successfuly get products',
+            'products': products
+         });
+    }catch(err){
+        res.status(400).json({
+            'statusCode' : err.statusCode,
+            'error' : err,
         });
-    }).catch(err=>{
-        console.log(err);
-    });
+    }
 });
-router.post('/',function(req,res,next) {
+router.post('/',async function(req,res,next) {
     const product = new Product({
         _id: new mongoose.Types.ObjectId(),
         name: req.body.name,
         price: req.body.price
     });
-    product.save().
-    then(result => {
-        res.status(200).json({
-            'product': product,
-        });
-    }).
-    catch(err => {
-        console.log(err);
-    })
-});
-
-router.get('/:productId',function(req,res,next){
-    const productId = req.params.productId;
-    Product.findById(productId).
-    exec().
-    then(doc=>{
-        if(doc){
-            res.status(200).json({
-                'product': doc,
-            });
-        }else{
-            res.status(404).json({
-                'message': 'no product found',
-            });
-        }
-    }).catch(err=>{
-        console.log(err);
-    });
-});
-
-router.delete('/:productId',function(req,res,next){
-    const productId = req.params.productId;
-    Product.remove({_id : productId}).
-    exec().
-    then(doc=>{
-        res.status(200).json({
-            'message': 'successfuly delete product',
-        });
-    }).catch(err=>{
-        console.log(err);
-    });
-});
-
-router.patch('/:productId',function(req,res,next) {
-   const pid = req.params.productId;
-   Product.updateOne({ _id: pid},{$set:{name : req.body.name,price:req.body.price}}).
-   exec().
-   then(result => {
+    try{
+    var newProduct = await product.save();
     res.status(200).json({
         'statusCode' : 200,
-        'message' : 'successfully update product',
-    });
-   }).
-   catch(err =>{
-    res.status(400).json({
-        'statusCode' : 400,
-        'error' : err,
-    });
-   });
+        'message' : 'successfuly add product',
+        'product': newProduct
+        });
+    }catch(err){
+        res.status(400).json({
+            'statusCode' : 400,
+            'error' : err,
+        });
+        console.log(err);
+    }
 });
+
+router.get('/:productId', async function(req,res,next){
+    const productId = req.params.productId;
+    try{
+        var product = await Product.findById(productId);
+        res.status(200).json({
+            'statusCode' : 200,
+            'message' : 'successfuly get product',
+            'product': product
+        });
+    }catch(err){
+        res.status(400).json({
+            'statusCode' : err.statusCode,
+            'error' : err,
+        });
+    }
+});
+
+router.delete('/:productId', async function(req,res,next){
+    try{
+        await Product.findByIdAndRemove({_id : req.params.productId});
+        res.status(200).json({
+            'statusCode' : 200,
+            'message' : 'successfuly delete product',
+        });
+    }catch(err){
+        res.status(400).json({
+            'statusCode' : err.statusCode,
+            'error' : err,
+        });
+    }
+});
+
+router.patch('/:productId', async function(req,res,next) {
+    try{
+        var product = await Product.findByIdAndUpdate(req.params.productId,{$set:{name : req.body.name,price:req.body.price}});
+            res.status(200).json({
+                'statusCode' : 200,
+                'message' : 'successfully update product',
+                'product': product
+            });
+    }catch(err){
+        res.status(400).json({
+            'statusCode' : 400,
+            'error' : err,
+        });
+    }
+});
+
 
 module.exports = router;
