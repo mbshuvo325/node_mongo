@@ -2,67 +2,117 @@ const express = require('express');
 
 const router = express.Router();
 
-const mongoose = require('mongoose');
+//const mongoose = require('mongoose');
 
-const User = require('../models/users');
+const jwt = require('jsonwebtoken');
+
+const User = require('../models/users'); 
+
+const helper = require('../helpers/user_helper');
+
+router.get('/getuser', async function(req,res,next){
+    const token = req.headers.authorization.split(' ')[1];
+    let jwtSecretKey = process.env.JWT_SECRET_KEY;
+    try{
+        const verified = jwt.verify(token,jwtSecretKey);
+    if(verified){
+        const id = verified.userId;
+        User.findById(id, function (err, docs) {
+        if (err){
+            console.log(err);
+            res.status(400).send({
+                'code' : 400,
+                'error' : err
+            });
+        }
+        else{
+            var newUser = docs.toObject();
+            delete newUser.otp;
+            delete newUser.device_id;
+            delete newUser.__v;
+            res.status(200).send({
+                'code' : 200,
+                'user' : newUser  
+            });
+        }
+    });
+    }else{
+        res.status(401).send(error);
+    }
+    }catch(e){
+        res.status(401).send(e);
+    }
+});
 
 router.post('/sendotp', async function(req,res,next) {
     const phoneNumber = req.body.phoneNumber;
     const otp = Math.floor(100000 + Math.random() * 900000);
-    const user = await User.find({phone : phoneNumber}).exec();
+    const user = await helper.findUser(phoneNumber);
    if(user.length < 1){
-    const data = await saveUserAndSendOtp(phoneNumber,otp);
+    const data = await helper.saveUserAndSendOtp(phoneNumber,otp);
     res.status(data.code).send(data);
    }
-   const data = await updateAndSendOtp(phoneNumber,otp);
+   const data = await helper.updateAndSendOtp(phoneNumber,otp);
     res.status(data.code).send(data);
 });
-
-async function saveUserAndSendOtp(phone,otp){
-    const user = new User({
-        _id: new mongoose.Types.ObjectId(),
-        name: "NA",
-        phone : phone,
-        otp : otp,
-    });
-   var result = await user.save();
-   if(result._id != null){
-    return {'code' : 200,
-             'otp' : otp,
-             'message' : 'Otp send successful'
-           };
-   }
-   return {'code' : 500,'message' : 'Server Error'};
-}
-async function updateAndSendOtp(phone,otp){
-    const query = { phone: phone};
-    var newvalues = {$set: {otp: otp} };
-  const result =  await User.updateOne(query,newvalues);
-  if(result.acknowledged){
-    return {
-        'code' : 200,
-        'otp' : otp,
-        'message' : 'Otp send successful'
-    };
-  }
-  return {'code' : 500,'message' : 'Server Error'};
-}
-
 router.post('/verifyotp', async function(req,res,next){
     const phoneNumber = req.body.phoneNumber;
     const otp = req.body.otp;
-    const user = User.findOne({phone : phoneNumber}).exec();
-    if(user.otp == otp && user.phone == phoneNumber){
-        return res.status(200).json({
-            'code': 200,
-            'message' : 'Otp verify successfull',
-            'token' : 'hjegrew3473bvch7rt37tr'
-        });
+    var result = await helper.findUser(phoneNumber);
+    if(result.code !== 404){
+        if(result.otp === otp){
+            await helper.updateToken(result._id);
+            var user = await helper.findUser(phoneNumber);
+            var newUser = user.toObject();
+            delete newUser.otp;
+            delete newUser.device_id;
+            delete newUser.__v;
+            return res.status(200).send({
+                'code': 200,
+                'message' : 'Otp verify successfull',
+                'user' : newUser
+            });
+        }else{
+            return res.status(202).send({
+                'code': 303,
+                'message' : 'Otp not match',
+
+            }); 
+        }
+    }else{
+        return res.status(200).send(result); 
     }
-    return res.status(401).json({
-        'code': 400,
-        'message' : 'Otp does`t match',
-    }); 
 });
 
+router.put('/update/:userId', async function(req,res,next){
+    const id = req.params.userId;
+    var newvalues = { 
+            name: req.body.name,
+            profile_image: req.body.image,
+            address : req.body.address
+    };
+     User.findByIdAndUpdate(id,newvalues,function(err, docs){
+        if (err){
+            console.log(err);
+            res.status(400).send({
+                'code' : 400,
+                'message' : 'User update unSuccessful',
+            });
+        }
+        else{
+            console.log(docs);
+            var newUser = docs.toObject();
+                delete newUser.otp;
+                delete newUser.device_id;
+                delete newUser.__v;
+                delete newUser.token;
+            res.status(200).send({
+                'code' : 200,
+                'message' : 'User update successful',
+                'user' : newUser
+            });
+        }
+    });
+});
+ 
 module.exports = router;
