@@ -16,32 +16,24 @@ router.get('/getuser', async function(req,res,next){
     try{
         const verified = jwt.verify(token,jwtSecretKey);
     if(verified){
-        const id = verified.userId;
-        User.findById(id, function (err, docs) {
-        if (err){
-            console.log(err);
-            res.status(400).send({
-                'code' : 400,
-                'error' : err
-            });
-        }
-        else{
-            var newUser = docs.toObject();
+        var user = await User.findById(verified.userId);
+        if(user._id != null){
+            var newUser = user.toObject();
             delete newUser.otp;
             delete newUser.device_id;
             delete newUser.__v;
-            res.status(200).send({
+            res.status(200).json({
                 'code' : 200,
                 'user' : newUser  
             });
         }
+    }
+}catch(err){
+    res.status(400).send({
+        'code' : 400,
+        'message' : 'User not found',
     });
-    }else{
-        res.status(401).send(error);
-    }
-    }catch(e){
-        res.status(401).send(e);
-    }
+  }
 });
 
 router.post('/sendotp', async function(req,res,next) {
@@ -55,6 +47,8 @@ router.post('/sendotp', async function(req,res,next) {
    const data = await helper.updateAndSendOtp(phoneNumber,otp);
     res.status(data.code).send(data);
 });
+
+
 router.post('/verifyotp', async function(req,res,next){
     const phoneNumber = req.body.phoneNumber;
     const otp = req.body.otp;
@@ -73,8 +67,8 @@ router.post('/verifyotp', async function(req,res,next){
                 'user' : newUser
             });
         }else{
-            return res.status(202).send({
-                'code': 303,
+            return res.status(400).send({
+                'code': 400,
                 'message' : 'Otp not match',
 
             }); 
@@ -93,14 +87,12 @@ router.put('/update/:userId', async function(req,res,next){
     };
      User.findByIdAndUpdate(id,newvalues,function(err, docs){
         if (err){
-            console.log(err);
             res.status(400).send({
                 'code' : 400,
                 'message' : 'User update unSuccessful',
             });
         }
         else{
-            console.log(docs);
             var newUser = docs.toObject();
                 delete newUser.otp;
                 delete newUser.device_id;
